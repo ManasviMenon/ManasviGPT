@@ -1,3 +1,5 @@
+print("FLASK APP STARTED")
+
 from flask import Flask, request, jsonify  # type: ignore
 from query_chatbot import answer_question
 import os

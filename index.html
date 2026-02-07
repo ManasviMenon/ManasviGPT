@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ManasviGPT</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 40px;
+    }
+    .chat-box {
+      max-width: 600px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    #response {
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+<div class="chat-box">
+  <h2>ManasviGPT 💬</h2>
+  <input id="question" placeholder="Ask something..." />
+  <button onclick="ask()">Ask</button>
+  <div id="response"></div>
+</div>
+
+<script>
+async function ask() {
+  const question = document.getElementById("question").value;
+  const responseDiv = document.getElementById("response");
+
+  responseDiv.innerText = "Thinking...";
+
+  const res = await fetch("http://127.0.0.1:5000/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ question })
+  });
+
+  const data = await res.json();
+  responseDiv.innerText = data.answer;
+}
+</script>
+
+</body>
+</html>

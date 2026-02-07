@@ -4,9 +4,14 @@ import unicodedata
 from dotenv import load_dotenv  # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import numpy as np
 
+# ----------- LOAD EMBEDDING MODEL ONCE -----------
+embedder = SentenceTransformer(
+    "all-MiniLM-L6-v2",
+    device="cpu"
+)
 
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -44,12 +49,11 @@ PRIORITY_FAQ = {
 }
 
 
-faq_model = SentenceTransformer("all-MiniLM-L6-v2")
 faq_keys = list(PRIORITY_FAQ.keys())
-faq_embeddings = faq_model.encode(faq_keys, convert_to_numpy=True)
+faq_embeddings = embedder.encode(faq_keys, convert_to_numpy=True)
 
 def search_priority_faq_semantic(question, threshold=0.65):
-    question_vec = faq_model.encode([normalize_text(question)], convert_to_numpy=True)
+    question_vec = embedder.encode([normalize_text(question)], convert_to_numpy=True)
     sims = cosine_similarity(question_vec, faq_embeddings)[0]
     best_idx = np.argmax(sims)
     if sims[best_idx] >= threshold:
@@ -65,8 +69,6 @@ with open("faiss_index/texts.pkl", "rb") as f:
     texts = pickle.load(f)
 
 # ----------- LOAD LOCAL EMBEDDING MODEL -----------
-
-embedder = SentenceTransformer("all-MiniLM-L6-v2", device="cpu")
 
 def embed_query(query):
     return embedder.encode(
@@ -95,8 +97,15 @@ def detect_intent(question):
         return "experience"
 
     return "general"
+groq_cache = {}
 
-
+def groq_answer_cached(question, context_chunks):
+    key = normalize_text(question)
+    if key in groq_cache:
+        return groq_cache[key]
+    answer = groq_answer(question, context_chunks)
+    groq_cache[key] = answer
+    return answer
 
 # ----------- RETRIEVE RELEVANT CHUNKS -----------
 def retrieve_chunks(query, top_k=20, max_distance=1.5, section=None):
@@ -209,21 +218,11 @@ def answer_question(question):
     # Deduplicate
     chunks = list(dict.fromkeys(chunks))
 
-    # ✅ FALLBACK MUST BE INSIDE FUNCTION
+    # FALLBACK MUST BE INSIDE FUNCTION
     if not chunks:
-        return groq_answer(
+        return groq_answer_cached(
             question,
             ["Use reasonable inference based on the provided profile, without inventing facts."]
         )
 
-    return groq_answer(question, chunks)
-
-
-# ---------------- LOOP ----------------
-print("ManasviGPT is ready! Type 'exit' to quit.")
-
-while True:
-    user_input = input("\nYou: ")
-    if user_input.lower() in ["exit", "quit"]:
-        break
-    print("\nManasviGPT:\n", answer_question(user_input))
+    return groq_answer_cached(question, chunks)
