@@ -4,14 +4,20 @@ import unicodedata
 from dotenv import load_dotenv  # type: ignore
 from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity # type: ignore
 import numpy as np
 
 # ----------- LOAD EMBEDDING MODEL ONCE -----------
-embedder = SentenceTransformer(
-    "all-MiniLM-L6-v2",
-    device="cpu"
-)
+_embedder = None
+
+def get_embedder():
+    global _embedder
+    if _embedder is None:
+        _embedder = SentenceTransformer(
+            "paraphrase-MiniLM-L3-v2",
+            device="cpu"
+        )
+    return _embedder
+
 
 load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -21,7 +27,6 @@ if not GROQ_API_KEY:
 
 import faiss # type: ignore
 import pickle
-from sentence_transformers import SentenceTransformer # type: ignore
 
 def normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFKD", text)
@@ -50,10 +55,10 @@ PRIORITY_FAQ = {
 
 
 faq_keys = list(PRIORITY_FAQ.keys())
-faq_embeddings = embedder.encode(faq_keys, convert_to_numpy=True)
+faq_embeddings = get_embedder().encode(faq_keys, convert_to_numpy=True)
 
 def search_priority_faq_semantic(question, threshold=0.65):
-    question_vec = embedder.encode([normalize_text(question)], convert_to_numpy=True)
+    question_vec = get_embedder().encode([normalize_text(question)], convert_to_numpy=True)
     sims = cosine_similarity(question_vec, faq_embeddings)[0]
     best_idx = np.argmax(sims)
     if sims[best_idx] >= threshold:
@@ -63,15 +68,21 @@ def search_priority_faq_semantic(question, threshold=0.65):
 
 
 # ----------- LOAD FAISS INDEX & TEXTS -----------
-index = faiss.read_index("faiss_index/faiss_index.bin")
+_index = None
+_texts = None
 
-with open("faiss_index/texts.pkl", "rb") as f:
-    texts = pickle.load(f)
+def get_faiss():
+    global _index, _texts
+    if _index is None or _texts is None:
+        _index = faiss.read_index("faiss_index/faiss_index.bin")
+        with open("faiss_index/texts.pkl", "rb") as f:
+            _texts = pickle.load(f)
+    return _index, _texts
 
 # ----------- LOAD LOCAL EMBEDDING MODEL -----------
 
 def embed_query(query):
-    return embedder.encode(
+    return get_embedder().encode(
         [query],
         convert_to_numpy=True
     ).astype("float32")
@@ -108,22 +119,38 @@ def groq_answer_cached(question, context_chunks):
     return answer
 
 # ----------- RETRIEVE RELEVANT CHUNKS -----------
-def retrieve_chunks(query, top_k=20, max_distance=1.5, section=None):
+def retrieve_chunks(query, top_k=20, section=None, max_distance=1.5):
     query_vec = embed_query(query)
+    index, texts = get_faiss()
     D, I = index.search(query_vec, k=top_k)
 
     chunks = []
+
+    # ⬇️ DISTANCE FILTER IS APPLIED HERE
     for dist, idx in zip(D[0], I[0]):
+        if idx >= len(texts):
+            continue
+
+        # FAISS distance filter (lower = better)
         if dist > max_distance:
             continue
+
         chunk = texts[idx]
-        # Only include if section matches (if section filter provided)
-        if section and chunk.get("section") != section:
-            continue
-        # Always return text
-        chunks.append(chunk["text"] if isinstance(chunk, dict) else chunk)
+
+        # Section filtering
+        if section and isinstance(chunk, dict):
+            if chunk.get("section") != section:
+                continue
+
+        # Extract text safely
+        if isinstance(chunk, dict):
+            chunks.append(chunk.get("text", ""))
+        else:
+            chunks.append(chunk)
 
     return chunks
+
+
 
 # ----------- QUERY LLM -----------
 def groq_answer(question, context_chunks):
