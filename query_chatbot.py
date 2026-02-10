@@ -13,7 +13,7 @@ def get_embedder():
     global _embedder
     if _embedder is None:
         _embedder = SentenceTransformer(
-            "paraphrase-MiniLM-L3-v2",
+            "all-MiniLM-L6-v2",  # smaller, ~120MB",
             device="cpu"
         )
     return _embedder
@@ -54,15 +54,25 @@ PRIORITY_FAQ = {
 }
 
 
-faq_keys = list(PRIORITY_FAQ.keys())
-faq_embeddings = get_embedder().encode(faq_keys, convert_to_numpy=True)
+_faq_embeddings = None
+_faq_keys = None
+
+def get_faq_embeddings():
+    global _faq_embeddings, _faq_keys
+    if _faq_embeddings is None:
+        _faq_keys = list(PRIORITY_FAQ.keys())
+        _faq_embeddings = get_embedder().encode(_faq_keys, convert_to_numpy=True)
+    return _faq_embeddings, _faq_keys
+
 
 def search_priority_faq_semantic(question, threshold=0.65):
     question_vec = get_embedder().encode([normalize_text(question)], convert_to_numpy=True)
+    faq_embeddings, faq_keys = get_faq_embeddings()
     sims = cosine_similarity(question_vec, faq_embeddings)[0]
     best_idx = np.argmax(sims)
     if sims[best_idx] >= threshold:
         return PRIORITY_FAQ[faq_keys[best_idx]]
+
     return None
 
 
