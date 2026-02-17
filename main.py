@@ -1,9 +1,9 @@
 import os
-import faiss
+import faiss # type: ignore
 import pickle
-import numpy as np
-from dotenv import load_dotenv
-import requests
+import numpy as np # type: ignore
+from dotenv import load_dotenv # type: ignore
+import requests # type: ignore
 from sentence_transformers import SentenceTransformer # type: ignore
 
 # ---------- LOAD ENV ----------
