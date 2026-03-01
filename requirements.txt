@@ -9,3 +9,4 @@ torch==2.10.0
 transformers==5.1.0
 huggingface-hub==1.4.1
 gunicorn
+Flask-Cors==4.0.0
