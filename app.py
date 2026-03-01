@@ -1,29 +1,33 @@
 print("FLASK APP STARTED")
 
 from dotenv import load_dotenv
-import os
-
-# Load environment variables from .env
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if not GROQ_API_KEY:
-    raise ValueError("❌ GROQ_API_KEY not found in .env")
-
-
-from flask import Flask, request, jsonify  # type: ignore
-from query_chatbot import answer_question
 import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from query_chatbot import answer_question
 
 app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
-def health():
-    return jsonify({"status": "ok", "message": "ManasviGPT API is running. Use POST /chat"}), 200
+# ✅ Allow your frontend domains
+CORS(app, resources={
+    r"/chat": {
+        "origins": [
+            "https://manasvigpt.online",
+            "https://www.manasvigpt.online",
+            "https://manasvimenon.github.io"   # optional if you still use GH pages
+        ]
+    }
+})
 
-@app.route("/chat", methods=["POST"])
+@app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    data = request.get_json(force=True, silent=True) or {}
+    # ✅ Preflight request
+    if request.method == "OPTIONS":
+        return ("", 204)
+
+    data = request.get_json(silent=True) or {}
     user_input = data.get("question")
 
     if not user_input:
@@ -32,7 +36,6 @@ def chat():
     response = answer_question(user_input)
     return jsonify({"answer": response})
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))  # Render uses PORT
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
