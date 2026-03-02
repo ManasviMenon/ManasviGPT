@@ -75,6 +75,30 @@ def search_priority_faq_semantic(question, threshold=0.65):
 
     return None
 
+SCOPE_ANCHORS = [
+    "Manasvi's education and academic background",
+    "Manasvi's work experience and professional background",
+    "Manasvi's projects, technical work, and tools",
+    "Manasvi's skills in data science, analytics, machine learning, NLP",
+    "Manasvi's leadership, teamwork, and achievements",
+    "Manasvi's hobbies and interests mentioned in her profile",
+    "Why Manasvi is a good fit for a role based on her profile",
+]
+
+_scope_embeds = None
+
+def get_scope_embeddings():
+    global _scope_embeds
+    if _scope_embeds is None:
+        _scope_embeds = get_embedder().encode(SCOPE_ANCHORS, convert_to_numpy=True)
+    return _scope_embeds
+
+def is_in_scope(question: str, threshold: float = 0.40) -> bool:
+    q = normalize_text(question)
+    qv = get_embedder().encode([q], convert_to_numpy=True)
+    scopev = get_scope_embeddings()
+    sims = cosine_similarity(qv, scopev)[0]
+    return float(np.max(sims)) >= threshold
 
 
 # ----------- LOAD FAISS INDEX & TEXTS -----------
@@ -224,6 +248,8 @@ def preprocess_question(question):
 
 # ----------- ANSWER FUNCTION (WITH STRICT SECTION ISOLATION) -----------
 def answer_question(question):
+    if not is_in_scope(question):
+        return "I don't have enough information to answer that."
     faq_answer = (
         search_priority_faq_semantic(question)
         if detect_intent(question) not in ["project", "experience"]
@@ -257,9 +283,7 @@ def answer_question(question):
 
     # FALLBACK MUST BE INSIDE FUNCTION
     if not chunks:
-        return groq_answer_cached(
-            question,
-            ["Use reasonable inference based on the provided profile, without inventing facts."]
-        )
+        return "I don't have enough information to answer that."
+        
 
     return groq_answer_cached(question, chunks)
