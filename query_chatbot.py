@@ -1,8 +1,8 @@
 import os
-import requests # type: ignore
+import requests  # type: ignore
 import unicodedata
 from dotenv import load_dotenv  # type: ignore
-from sklearn.metrics.pairwise import cosine_similarity # type: ignore
+from sklearn.metrics.pairwise import cosine_similarity  # type: ignore
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
@@ -25,8 +25,9 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
     raise ValueError("❌ GROQ_API_KEY not found in .env")
 
-import faiss # type: ignore
+import faiss  # type: ignore
 import pickle
+
 
 def normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFKD", text)
@@ -36,8 +37,8 @@ def normalize_text(text: str) -> str:
 
 PRIORITY_FAQ = {
     "what role does she wish to work in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
-    "What roles is she interested in?":"Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
-    "What roles is she open to?":"Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.", 
+    "What roles is she interested in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
+    "What roles is she open to?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
     "what is her leadership experience?": "Manasvi has held leadership roles such as Vice President at AIESEC, leading teams of up to 60 members and cross-functional teams, mentoring, and managing strategic projects. She also led a direct team of 15 and an entity of 60+, securing B2B partnerships with multinational brands, achieving 100% sustainability in strategic partnerships, and driving 92% revenue growth.",
     "Academic background?": "Manasvi completed her undergraduate studies in Economics with majors in Statistics and Finance. She also studied quantitative analysis, econometrics, programming, and regression analysis, which provided a strong foundation for data-driven decision-making and analytics. Currently studying Data Science and Analytics where she is  studying subjects like Machine Learning, Natural Language Processing, Big Data Engineering, Statistics.",
     "who is Manasvi ?": "Manasvi Menon is a final-year postgraduate student currently based in Sydney, Australia. She is pursuing a Master’s degree in Data Science and Analytics at the University of Technology Sydney (UTS). She has a strong academic and analytical background, combined with professional experience in startups, FinTech, and Not-for-Profit organizations.",
@@ -48,11 +49,7 @@ PRIORITY_FAQ = {
     "Extra-curriculars": "Manasvi is a national-level debater who has represented institutions across multiple competitive debating tournaments in India. She is an avid reader and writer, with a strong interest in ideas, storytelling, and critical thinking. Outside of academics, she enjoys hiking and travelling to remote locations, drawn to experiences that challenge her comfort zone and push her limits. She is also a keen tennis enthusiast."
 }
 
-PRIORITY_FAQ = {
-    normalize_text(k): v
-    for k, v in PRIORITY_FAQ.items()
-}
-
+PRIORITY_FAQ = {normalize_text(k): v for k, v in PRIORITY_FAQ.items()}
 
 _faq_embeddings = None
 _faq_keys = None
@@ -72,8 +69,8 @@ def search_priority_faq_semantic(question, threshold=0.65):
     best_idx = np.argmax(sims)
     if sims[best_idx] >= threshold:
         return PRIORITY_FAQ[faq_keys[best_idx]]
-
     return None
+
 
 SCOPE_ANCHORS = [
     "Manasvi's education and academic background",
@@ -92,6 +89,7 @@ def get_scope_embeddings():
     if _scope_embeds is None:
         _scope_embeds = get_embedder().encode(SCOPE_ANCHORS, convert_to_numpy=True)
     return _scope_embeds
+
 
 def is_in_scope(question: str, threshold: float = 0.40) -> bool:
     q = normalize_text(question)
@@ -113,13 +111,11 @@ def get_faiss():
             _texts = pickle.load(f)
     return _index, _texts
 
-# ----------- LOAD LOCAL EMBEDDING MODEL -----------
 
+# ----------- LOAD LOCAL EMBEDDING MODEL -----------
 def embed_query(query):
-    return get_embedder().encode(
-        [query],
-        convert_to_numpy=True
-    ).astype("float32")
+    return get_embedder().encode([query], convert_to_numpy=True).astype("float32")
+
 
 def detect_intent(question):
     q = question.lower()
@@ -142,6 +138,8 @@ def detect_intent(question):
         return "experience"
 
     return "general"
+
+
 groq_cache = {}
 
 def groq_answer_cached(question, context_chunks):
@@ -152,6 +150,7 @@ def groq_answer_cached(question, context_chunks):
     groq_cache[key] = answer
     return answer
 
+
 # ----------- RETRIEVE RELEVANT CHUNKS -----------
 def retrieve_chunks(query, top_k=20, section=None, max_distance=1.5):
     query_vec = embed_query(query)
@@ -160,23 +159,19 @@ def retrieve_chunks(query, top_k=20, section=None, max_distance=1.5):
 
     chunks = []
 
-    # ⬇️ DISTANCE FILTER IS APPLIED HERE
     for dist, idx in zip(D[0], I[0]):
         if idx >= len(texts):
             continue
 
-        # FAISS distance filter (lower = better)
         if dist > max_distance:
             continue
 
         chunk = texts[idx]
 
-        # Section filtering
         if section and isinstance(chunk, dict):
             if chunk.get("section") != section:
                 continue
 
-        # Extract text safely
         if isinstance(chunk, dict):
             chunks.append(chunk.get("text", ""))
         else:
@@ -184,6 +179,24 @@ def retrieve_chunks(query, top_k=20, section=None, max_distance=1.5):
 
     return chunks
 
+
+# ✅ NEW: RELEVANCE GATE (robust “stupid question” stopper)
+def context_relevance_score(question: str, chunks: list[str]) -> float:
+    """
+    Measures how well retrieved chunks match the question (semantic similarity).
+    Returns best similarity in [0..1].
+    """
+    if not chunks:
+        return 0.0
+
+    q = normalize_text(question)
+    qv = get_embedder().encode([q], convert_to_numpy=True)
+
+    sample = chunks[:8]  # keep it cheap
+    cv = get_embedder().encode([normalize_text(c) for c in sample], convert_to_numpy=True)
+
+    sims = cosine_similarity(qv, cv)[0]
+    return float(np.max(sims))
 
 
 # ----------- QUERY LLM -----------
@@ -238,9 +251,9 @@ Question:
 
     return response.json()["choices"][0]["message"]["content"]
 
+
 # ----------------- SECTION DETECTION -----------------
 def preprocess_question(question):
-    # Replace pronouns with the name to improve retrieval
     question = question.replace("her", "Manasvi Menon")
     question = question.replace("she", "Manasvi Menon")
     return question
@@ -250,6 +263,7 @@ def preprocess_question(question):
 def answer_question(question):
     if not is_in_scope(question):
         return "I don't have enough information to answer that."
+
     faq_answer = (
         search_priority_faq_semantic(question)
         if detect_intent(question) not in ["project", "experience"]
@@ -281,9 +295,12 @@ def answer_question(question):
     # Deduplicate
     chunks = list(dict.fromkeys(chunks))
 
-    # FALLBACK MUST BE INSIDE FUNCTION
+    # ✅ NEW: block answers if retrieved context is not actually relevant
+    score = context_relevance_score(question, chunks)
+    if score < 0.52:
+        return "I don't have enough information to answer that."
+
     if not chunks:
         return "I don't have enough information to answer that."
-        
 
     return groq_answer_cached(question, chunks)
