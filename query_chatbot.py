@@ -131,8 +131,6 @@ def is_in_scope(question: str, threshold: float = 0.40) -> bool:
         return False
     if best_out > best_in:                       # gate 2: more off-topic than on-topic
         return False
-    if best_in < 0.50 and best_out > 0.30:      # gate 3: weakly on-topic + any off-topic signal
-        return False
     return True
 
 
