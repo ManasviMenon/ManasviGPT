@@ -31,17 +31,17 @@ import pickle
 
 def normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFKD", text)
-    text = text.replace("’", "'").replace("“", '"').replace("”", '"')
+    text = text.replace("'", "'").replace("\u201c", '"').replace("\u201d", '"')
     return text.lower().strip()
 
 
 PRIORITY_FAQ = {
-    "what role does she wish to work in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
-    "What roles is she interested in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
-    "What roles is she open to?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder’s Office roles. This reflects her career aspirations and interests, not her past work experience.",
+    "what role does she wish to work in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder's Office roles. This reflects her career aspirations and interests, not her past work experience.",
+    "What roles is she interested in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder's Office roles. This reflects her career aspirations and interests, not her past work experience.",
+    "What roles is she open to?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder's Office roles. This reflects her career aspirations and interests, not her past work experience.",
     "what is her leadership experience?": "Manasvi has held leadership roles such as Vice President at AIESEC, leading teams of up to 60 members and cross-functional teams, mentoring, and managing strategic projects. She also led a direct team of 15 and an entity of 60+, securing B2B partnerships with multinational brands, achieving 100% sustainability in strategic partnerships, and driving 92% revenue growth.",
     "Academic background?": "Manasvi completed her undergraduate studies in Economics with majors in Statistics and Finance. She also studied quantitative analysis, econometrics, programming, and regression analysis, which provided a strong foundation for data-driven decision-making and analytics. Currently studying Data Science and Analytics where she is  studying subjects like Machine Learning, Natural Language Processing, Big Data Engineering, Statistics.",
-    "who is Manasvi ?": "Manasvi Menon is a final-year postgraduate student currently based in Sydney, Australia. She is pursuing a Master’s degree in Data Science and Analytics at the University of Technology Sydney (UTS). She has a strong academic and analytical background, combined with professional experience in startups, FinTech, and Not-for-Profit organizations.",
+    "who is Manasvi ?": "Manasvi Menon is a final-year postgraduate student currently based in Sydney, Australia. She is pursuing a Master's degree in Data Science and Analytics at the University of Technology Sydney (UTS). She has a strong academic and analytical background, combined with professional experience in startups, FinTech, and Not-for-Profit organizations.",
     "what motivates her?": "I am motivated by opportunities to create impact, lead others, build solutions from scratch, and continuously grow personally and professionally.",
     "what leadership experience does Manasvi have?": "Manasvi has held leadership roles such as Vice President at AIESEC, leading teams of up to 60 members and cross-functional teams, mentoring, and managing strategic projects. She also led a direct team of 15 and an entity of 60+, securing B2B partnerships with multinational brands, achieving 100% sustainability in strategic partnerships, and driving 92% revenue growth.",
     "tell me about her leadership experience": "Manasvi has held leadership roles such as Vice President at AIESEC, leading teams of up to 60 members and cross-functional teams, mentoring, and managing strategic projects. She also led a direct team of 15 and an entity of 60+, securing B2B partnerships with multinational brands, achieving 100% sustainability in strategic partnerships, and driving 92% revenue growth.",
@@ -80,9 +80,24 @@ SCOPE_ANCHORS = [
     "Manasvi's leadership, teamwork, and achievements",
     "Manasvi's hobbies and interests mentioned in her profile",
     "Why Manasvi is a good fit for a role based on her profile",
+    # ── ADDED: hiring/synthesis anchors ──
+    "Why Manasvi should be hired and what she brings to a team",
+    "Manasvi's unique strengths and value as a candidate",
+    "What makes Manasvi stand out professionally as a job applicant",
+]
+
+# ── ADDED: out-of-scope anchors for contrastive filtering ──
+OUT_OF_SCOPE_ANCHORS = [
+    "questions about physical appearance and attractiveness",
+    "personal life, relationships, and dating",
+    "unrelated topics like weather, food, jokes, or news",
+    "compliments or insults about someone's looks",
+    "questions with no connection to work, skills, or career",
+    "nonsense or irrelevant small talk",
 ]
 
 _scope_embeds = None
+_out_of_scope_embeds = None  # ADDED
 
 def get_scope_embeddings():
     global _scope_embeds
@@ -90,13 +105,30 @@ def get_scope_embeddings():
         _scope_embeds = get_embedder().encode(SCOPE_ANCHORS, convert_to_numpy=True)
     return _scope_embeds
 
+# ── ADDED ──
+def get_out_of_scope_embeddings():
+    global _out_of_scope_embeds
+    if _out_of_scope_embeds is None:
+        _out_of_scope_embeds = get_embedder().encode(OUT_OF_SCOPE_ANCHORS, convert_to_numpy=True)
+    return _out_of_scope_embeds
+
 
 def is_in_scope(question: str, threshold: float = 0.40) -> bool:
     q = normalize_text(question)
     qv = get_embedder().encode([q], convert_to_numpy=True)
-    scopev = get_scope_embeddings()
-    sims = cosine_similarity(qv, scopev)[0]
-    return float(np.max(sims)) >= threshold
+
+    in_scope_sims = cosine_similarity(qv, get_scope_embeddings())[0]
+    best_in = float(np.max(in_scope_sims))
+
+    # ── ADDED: contrastive check ──
+    out_scope_sims = cosine_similarity(qv, get_out_of_scope_embeddings())[0]
+    best_out = float(np.max(out_scope_sims))
+
+    if best_in < threshold:
+        return False
+    if best_out > best_in:  # out-of-scope is a better match → block
+        return False
+    return True
 
 
 # ----------- LOAD FAISS INDEX & TEXTS -----------
@@ -120,6 +152,15 @@ def embed_query(query):
 def detect_intent(question):
     q = question.lower()
 
+    # ── ADDED: synthesis intent ──
+    synthesis_keywords = [
+        "hire", "recommend", "why should", "strengths", "stand out",
+        "suitable", "fit for", "value", "unique", "best candidate",
+        "what makes her", "overall", "summary", "overview",
+    ]
+    if any(sk in q for sk in synthesis_keywords):
+        return "synthesis"
+
     project_keywords = [
         "project", "pipeline", "etl", "elt", "airbnb", "taxi",
         "databricks", "spark", "gcp", "dbt", "sql", "ml",
@@ -142,11 +183,11 @@ def detect_intent(question):
 
 groq_cache = {}
 
-def groq_answer_cached(question, context_chunks):
+def groq_answer_cached(question, context_chunks, intent="general"):  # ADDED intent param
     key = normalize_text(question)
     if key in groq_cache:
         return groq_cache[key]
-    answer = groq_answer(question, context_chunks)
+    answer = groq_answer(question, context_chunks, intent=intent)  # ADDED intent
     groq_cache[key] = answer
     return answer
 
@@ -180,19 +221,14 @@ def retrieve_chunks(query, top_k=20, section=None, max_distance=1.5):
     return chunks
 
 
-# ✅ NEW: RELEVANCE GATE (robust “stupid question” stopper)
 def context_relevance_score(question: str, chunks: list[str]) -> float:
-    """
-    Measures how well retrieved chunks match the question (semantic similarity).
-    Returns best similarity in [0..1].
-    """
     if not chunks:
         return 0.0
 
     q = normalize_text(question)
     qv = get_embedder().encode([q], convert_to_numpy=True)
 
-    sample = chunks[:8]  # keep it cheap
+    sample = chunks[:8]
     cv = get_embedder().encode([normalize_text(c) for c in sample], convert_to_numpy=True)
 
     sims = cosine_similarity(qv, cv)[0]
@@ -200,7 +236,7 @@ def context_relevance_score(question: str, chunks: list[str]) -> float:
 
 
 # ----------- QUERY LLM -----------
-def groq_answer(question, context_chunks):
+def groq_answer(question, context_chunks, intent="general"):  # ADDED intent param
     context = "\n\n".join(context_chunks)
 
     system_prompt = """
@@ -219,6 +255,17 @@ Rules (must follow exactly):
 8: Never invent roles, exposure, or work history.
 """
 
+    # ── ADDED: synthesis mode injection ──
+    if intent == "synthesis":
+        system_prompt += """
+SYNTHESIS MODE — the recruiter is asking you to make a case for Manasvi as a candidate.
+- Draw on ALL sections of the context: education, skills, experience, projects, leadership.
+- Connect the dots across sections (e.g. her analytical degree + data science masters
+  + hands-on projects + leadership = a well-rounded data professional).
+- Structure your answer: short opening → 3-4 concrete evidence-backed reasons → closing sentence.
+- Be persuasive but grounded — every claim must be traceable to the context.
+"""
+
     url = "https://api.groq.com/openai/v1/chat/completions"
 
     headers = {
@@ -228,7 +275,7 @@ Rules (must follow exactly):
 
     data = {
         "model": "llama-3.1-8b-instant",
-        "temperature": 0.2,
+        "temperature": 0.4 if intent == "synthesis" else 0.2,  # ADDED: slightly more creative for synthesis
         "messages": [
             {"role": "system", "content": system_prompt},
             {
@@ -262,11 +309,11 @@ def preprocess_question(question):
 # ----------- ANSWER FUNCTION (WITH STRICT SECTION ISOLATION) -----------
 def answer_question(question):
     if not is_in_scope(question):
-        return "I don't have enough information to answer that."
+        return "I'm here to answer questions about Manasvi's professional profile. That question is outside my scope!"
 
     faq_answer = (
         search_priority_faq_semantic(question)
-        if detect_intent(question) not in ["project", "experience"]
+        if detect_intent(question) not in ["project", "experience", "synthesis"]  # ADDED synthesis
         else None
     )
     if faq_answer:
@@ -289,13 +336,16 @@ def answer_question(question):
             + retrieve_chunks(question, top_k=top_k, section="experience")
         )
 
+    # ── ADDED: synthesis branch ──
+    elif intent == "synthesis":
+        chunks = retrieve_chunks(question, top_k=top_k * 2)
+
     else:
         chunks = retrieve_chunks(question, top_k=top_k)
 
     # Deduplicate
     chunks = list(dict.fromkeys(chunks))
 
-    # ✅ NEW: block answers if retrieved context is not actually relevant
     score = context_relevance_score(question, chunks)
     if score < 0.52:
         return "I don't have enough information to answer that."
@@ -303,4 +353,4 @@ def answer_question(question):
     if not chunks:
         return "I don't have enough information to answer that."
 
-    return groq_answer_cached(question, chunks)
+    return groq_answer_cached(question, chunks, intent=intent)  # ADDED intent
