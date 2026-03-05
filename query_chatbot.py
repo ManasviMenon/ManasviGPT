@@ -88,12 +88,16 @@ SCOPE_ANCHORS = [
 
 # ── ADDED: out-of-scope anchors for contrastive filtering ──
 OUT_OF_SCOPE_ANCHORS = [
-    "questions about physical appearance and attractiveness",
-    "personal life, relationships, and dating",
-    "unrelated topics like weather, food, jokes, or news",
-    "compliments or insults about someone's looks",
-    "questions with no connection to work, skills, or career",
-    "nonsense or irrelevant small talk",
+    "how attractive or pretty does someone look physically",
+    "romantic relationship status and dating life",
+    "cooking recipes and food preparation",
+    "weather forecast and climate",
+    "celebrity gossip and entertainment news",
+    "physical body features like height weight skin color",
+    "jokes memes and funny content",
+    "sports scores and game results",
+    "stock prices and cryptocurrency",
+    "political opinions and news events",
 ]
 
 _scope_embeds = None
@@ -115,20 +119,7 @@ def get_out_of_scope_embeddings():
 
 def is_in_scope(question: str, threshold: float = 0.40) -> bool:
     q = normalize_text(question)
-
-    # Strip candidate name variants before embedding so "Manasvi" doesn't
-    # artificially inflate similarity to in-scope anchors (which all mention her name).
-    q_stripped = (
-        q.replace("manasvi menon", "")
-         .replace("manasvi", "")
-         .replace("she", "")
-         .replace("her", "")
-         .strip()
-    )
-    # If nothing meaningful is left after stripping, fall back to full question
-    q_for_scope = q_stripped if len(q_stripped) > 4 else q
-
-    qv = get_embedder().encode([q_for_scope], convert_to_numpy=True)
+    qv = get_embedder().encode([q], convert_to_numpy=True)
 
     in_scope_sims = cosine_similarity(qv, get_scope_embeddings())[0]
     best_in = float(np.max(in_scope_sims))
