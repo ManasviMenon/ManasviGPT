@@ -357,3 +357,10 @@ def answer_question(question):
         return "I don't have enough information to answer that."
 
     return groq_answer_cached(question, chunks, intent=intent)  # ADDED intent
+
+
+# ----------- WARM UP ON STARTUP -----------
+get_embedder()
+get_scope_embeddings()
+get_out_of_scope_embeddings()
+get_faq_embeddings()
