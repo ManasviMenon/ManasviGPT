@@ -115,18 +115,32 @@ def get_out_of_scope_embeddings():
 
 def is_in_scope(question: str, threshold: float = 0.40) -> bool:
     q = normalize_text(question)
-    qv = get_embedder().encode([q], convert_to_numpy=True)
+
+    # Strip candidate name variants before embedding so "Manasvi" doesn't
+    # artificially inflate similarity to in-scope anchors (which all mention her name).
+    q_stripped = (
+        q.replace("manasvi menon", "")
+         .replace("manasvi", "")
+         .replace("she", "")
+         .replace("her", "")
+         .strip()
+    )
+    # If nothing meaningful is left after stripping, fall back to full question
+    q_for_scope = q_stripped if len(q_stripped) > 4 else q
+
+    qv = get_embedder().encode([q_for_scope], convert_to_numpy=True)
 
     in_scope_sims = cosine_similarity(qv, get_scope_embeddings())[0]
     best_in = float(np.max(in_scope_sims))
 
-    # ── ADDED: contrastive check ──
     out_scope_sims = cosine_similarity(qv, get_out_of_scope_embeddings())[0]
     best_out = float(np.max(out_scope_sims))
 
-    if best_in < threshold:
+    if best_in < threshold:                      # gate 1: not close to any professional topic
         return False
-    if best_out > best_in:  # out-of-scope is a better match → block
+    if best_out > best_in:                       # gate 2: more off-topic than on-topic
+        return False
+    if best_in < 0.50 and best_out > 0.30:      # gate 3: weakly on-topic + any off-topic signal
         return False
     return True
 
