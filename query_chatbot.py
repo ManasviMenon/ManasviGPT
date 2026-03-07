@@ -66,7 +66,7 @@ def get_faq_embeddings():
     return _faq_embeddings, _faq_keys
 
 
-def search_priority_faq_semantic(question, threshold=0.65):
+def search_priority_faq_semantic(question, threshold=0.78):
     question_vec = get_embedder().encode([normalize_text(question)], convert_to_numpy=True)
     faq_embeddings, faq_keys = get_faq_embeddings()
     sims = cosine_similarity(question_vec, faq_embeddings)[0]
