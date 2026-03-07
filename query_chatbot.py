@@ -139,7 +139,9 @@ def detect_intent(question):
     synthesis_keywords = [
         "hire", "recommend", "why should", "strengths", "stand out",
         "suitable", "fit for", "value", "unique", "best candidate",
-        "what makes her", "overall", "summary", "overview",
+        "what makes her", "overall", "summary", "overview", "good candidate", "data scientist", "data analyst", "right person",
+        "good fit", "why is she", "case for", "argue for",
+
     ]
     if any(sk in q for sk in synthesis_keywords):
         return "synthesis"
