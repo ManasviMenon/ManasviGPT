@@ -103,6 +103,7 @@ OUT_OF_SCOPE_ANCHORS = [
     "sports scores and game results",
     "stock prices and cryptocurrency",
     "political opinions and news events",
+    "travel and personal questions on personal preferences not related to my profession or studies"
 ]
 
 _scope_embeds = None
