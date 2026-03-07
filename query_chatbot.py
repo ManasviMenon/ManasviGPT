@@ -73,88 +73,45 @@ def search_priority_faq_semantic(question, threshold=0.65):
         return PRIORITY_FAQ[faq_keys[best_idx]]
     return None
 
-
-SCOPE_ANCHORS = [
-    "Manasvi's education and academic background",
-    "Manasvi's work experience and professional background",
-    "Manasvi's projects, technical work, and tools",
-    "Manasvi's skills in data science, analytics, machine learning, NLP",
-    "Manasvi's leadership, teamwork, and achievements",
-    "Manasvi's hobbies and interests mentioned in her profile",
-    "Why Manasvi is a good fit for a role based on her profile",
-    # ── ADDED: hiring/synthesis anchors ──
-    "Who is Manasvi"
-    "Where does she live"
-    "Candidate overview and introduction"
-    "Why Manasvi should be hired and what she brings to a team",
-    "Manasvi's unique strengths and value as a candidate",
-    "What makes Manasvi stand out professionally as a job applicant",
+RECRUITER_INTENT_ANCHORS = [
+    "tell me about this job candidate professional background",
+    "what are the qualifications and skills of this applicant",
+    "what experience and education does this person have",
+    "why should we hire this candidate for the role",
+    "what projects and technical work has this person done",
+    "what are the career goals and aspirations of this candidate",
+    "what leadership and teamwork experience does this person have",
+    "where did this candidate study and what did they major in",
+    "what tools technologies and programming languages do they know",
+    "is this candidate available and where are they located",
+    "what is this persons academic performance and grades",
+    "what certifications awards or achievements does this candidate have",
 ]
 
-# ── ADDED: out-of-scope anchors for contrastive filtering ──
-OUT_OF_SCOPE_ANCHORS = [
-    "how attractive or pretty does someone look physically",
-    "romantic relationship status and dating life",
-    "cooking recipes and food preparation",
-    "weather forecast and climate",
-    "celebrity gossip and entertainment news",
-    "physical body features like height weight skin color",
-    "jokes memes and funny content",
-    "sports scores and game results",
-    "stock prices and cryptocurrency",
-    "political opinions and news events",
-    "travel and personal questions on personal preferences not related to my profession or studies"
-]
+_recruiter_embeds = None
 
-_scope_embeds = None
-_out_of_scope_embeds = None  # ADDED
-
-def get_scope_embeddings():
-    global _scope_embeds
-    if _scope_embeds is None:
-        _scope_embeds = get_embedder().encode(SCOPE_ANCHORS, convert_to_numpy=True)
-    return _scope_embeds
-
-# ── ADDED ──
-def get_out_of_scope_embeddings():
-    global _out_of_scope_embeds
-    if _out_of_scope_embeds is None:
-        _out_of_scope_embeds = get_embedder().encode(OUT_OF_SCOPE_ANCHORS, convert_to_numpy=True)
-    return _out_of_scope_embeds
+def get_recruiter_embeddings():
+    global _recruiter_embeds
+    if _recruiter_embeds is None:
+        _recruiter_embeds = get_embedder().encode(
+            RECRUITER_INTENT_ANCHORS, convert_to_numpy=True
+        )
+    return _recruiter_embeds
 
 
-def is_in_scope(question: str, threshold: float = 0.35) -> bool:
+def is_in_scope(question: str, threshold: float = 0.30) -> bool:
     q = normalize_text(question)
 
-    whitelist_patterns = [    "who is", "where is", "where does", "where did",
-    "what is her", "what is his", "what does she",
-    "how old", "where was", "what nationality",
-    "what is she", "what is manasvi", "what has she",
-    "what did she", "tell me about", "how did she",
-    "what are her", "what are manasvi", "has she",
-    "is she", "does she", "did she", "can she",
-    "how long", "when did", "when does",]
-    if any(p in q for p in whitelist_patterns):
-        return True
-    # Strip name for in-scope check so "Manasvi" doesn't inflate scores
-    q_no_name = q.replace("manasvi menon", "").replace("manasvi", "").strip()
-    q_for_in = q_no_name if len(q_no_name) > 4 else q
+    # Replace name with generic "candidate" so matching is based on intent not name
+    q_clean = (q.replace("manasvi menon", "candidate")
+                .replace("manasvi", "candidate")
+                .replace("she", "they")
+                .replace("her", "their")
+                .strip())
 
-    qv_in = get_embedder().encode([q_for_in], convert_to_numpy=True)
-    qv_out = get_embedder().encode([q], convert_to_numpy=True)  # full question for out-of-scope
-
-    in_scope_sims = cosine_similarity(qv_in, get_scope_embeddings())[0]
-    best_in = float(np.max(in_scope_sims))
-
-    out_scope_sims = cosine_similarity(qv_out, get_out_of_scope_embeddings())[0]
-    best_out = float(np.max(out_scope_sims))
-
-    if best_in < threshold:
-        return False
-    if best_out > best_in:
-        return False
-    return True
-
+    qv = get_embedder().encode([q_clean], convert_to_numpy=True)
+    sims = cosine_similarity(qv, get_recruiter_embeddings())[0]
+    return float(np.max(sims)) >= threshold
 # ----------- LOAD FAISS INDEX & TEXTS -----------
 _index = None
 _texts = None
