@@ -48,6 +48,8 @@ PRIORITY_FAQ = {
     "what are her interests and hobbies?": "Manasvi is a national-level debater who has represented institutions across multiple competitive debating tournaments in India. She is an avid reader and writer, with a strong interest in ideas, storytelling, and critical thinking. Outside of academics, she enjoys hiking and travelling to remote locations, drawn to experiences that challenge her comfort zone and push her limits. She is also a keen tennis enthusiast.",
     "Extra-curriculars": "Manasvi is a national-level debater who has represented institutions across multiple competitive debating tournaments in India. She is an avid reader and writer, with a strong interest in ideas, storytelling, and critical thinking. Outside of academics, she enjoys hiking and travelling to remote locations, drawn to experiences that challenge her comfort zone and push her limits. She is also a keen tennis enthusiast.",
     "Is she available to work immediately": "Yes",
+    "What degree is she studying":"A Master's Degree in Data Science. She also holds a Bachelor's Degree in Economics and Statistics",
+    "What degree is she pursuing":"A Master's Degree in Data Science. She also holds a Bachelor's Degree in Economics and Statistics",
     "What is her GPA": "Bachelor's Degree in Economics and Statistics: 9.1/10 CGPA and Master's Degree in Data Science: 6.5/7"
 }
 
