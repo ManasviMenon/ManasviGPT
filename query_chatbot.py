@@ -46,7 +46,9 @@ PRIORITY_FAQ = {
     "what leadership experience does Manasvi have?": "Manasvi has held leadership roles such as Vice President at AIESEC, leading teams of up to 60 members and cross-functional teams, mentoring, and managing strategic projects. She also led a direct team of 15 and an entity of 60+, securing B2B partnerships with multinational brands, achieving 100% sustainability in strategic partnerships, and driving 92% revenue growth.",
     "tell me about her leadership experience": "Manasvi has held leadership roles such as Vice President at AIESEC, leading teams of up to 60 members and cross-functional teams, mentoring, and managing strategic projects. She also led a direct team of 15 and an entity of 60+, securing B2B partnerships with multinational brands, achieving 100% sustainability in strategic partnerships, and driving 92% revenue growth.",
     "what are her interests and hobbies?": "Manasvi is a national-level debater who has represented institutions across multiple competitive debating tournaments in India. She is an avid reader and writer, with a strong interest in ideas, storytelling, and critical thinking. Outside of academics, she enjoys hiking and travelling to remote locations, drawn to experiences that challenge her comfort zone and push her limits. She is also a keen tennis enthusiast.",
-    "Extra-curriculars": "Manasvi is a national-level debater who has represented institutions across multiple competitive debating tournaments in India. She is an avid reader and writer, with a strong interest in ideas, storytelling, and critical thinking. Outside of academics, she enjoys hiking and travelling to remote locations, drawn to experiences that challenge her comfort zone and push her limits. She is also a keen tennis enthusiast."
+    "Extra-curriculars": "Manasvi is a national-level debater who has represented institutions across multiple competitive debating tournaments in India. She is an avid reader and writer, with a strong interest in ideas, storytelling, and critical thinking. Outside of academics, she enjoys hiking and travelling to remote locations, drawn to experiences that challenge her comfort zone and push her limits. She is also a keen tennis enthusiast.",
+    "Is she available to work immediately": "Yes",
+    "What is her GPA": "Bachelor's Degree in Economics and Statistics: 9.1/10 CGPA and Master's Degree in Data Science: 6.5/7"
 }
 
 PRIORITY_FAQ = {normalize_text(k): v for k, v in PRIORITY_FAQ.items()}
@@ -123,9 +125,14 @@ def get_out_of_scope_embeddings():
 def is_in_scope(question: str, threshold: float = 0.35) -> bool:
     q = normalize_text(question)
 
-    whitelist_patterns = ["who is", "where is", "where does", "where did",
-                          "what is her", "what is his", "what does she",
-                          "how old", "where was", "what nationality"]
+    whitelist_patterns = [    "who is", "where is", "where does", "where did",
+    "what is her", "what is his", "what does she",
+    "how old", "where was", "what nationality",
+    "what is she", "what is manasvi", "what has she",
+    "what did she", "tell me about", "how did she",
+    "what are her", "what are manasvi", "has she",
+    "is she", "does she", "did she", "can she",
+    "how long", "when did", "when does",]
     if any(p in q for p in whitelist_patterns):
         return True
     # Strip name for in-scope check so "Manasvi" doesn't inflate scores
