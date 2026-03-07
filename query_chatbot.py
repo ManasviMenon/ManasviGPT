@@ -81,6 +81,9 @@ SCOPE_ANCHORS = [
     "Manasvi's hobbies and interests mentioned in her profile",
     "Why Manasvi is a good fit for a role based on her profile",
     # ── ADDED: hiring/synthesis anchors ──
+    "Who is Manasvi"
+    "Where does she live"
+    "Candidate overview and introduction"
     "Why Manasvi should be hired and what she brings to a team",
     "Manasvi's unique strengths and value as a candidate",
     "What makes Manasvi stand out professionally as a job applicant",
@@ -117,22 +120,32 @@ def get_out_of_scope_embeddings():
     return _out_of_scope_embeds
 
 
-def is_in_scope(question: str, threshold: float = 0.40) -> bool:
+def is_in_scope(question: str, threshold: float = 0.35) -> bool:
     q = normalize_text(question)
-    qv = get_embedder().encode([q], convert_to_numpy=True)
 
-    in_scope_sims = cosine_similarity(qv, get_scope_embeddings())[0]
+    whitelist_patterns = ["who is", "where is", "where does", "where did",
+                          "what is her", "what is his", "what does she",
+                          "how old", "where was", "what nationality"]
+    if any(p in q for p in whitelist_patterns):
+        return True
+    # Strip name for in-scope check so "Manasvi" doesn't inflate scores
+    q_no_name = q.replace("manasvi menon", "").replace("manasvi", "").strip()
+    q_for_in = q_no_name if len(q_no_name) > 4 else q
+
+    qv_in = get_embedder().encode([q_for_in], convert_to_numpy=True)
+    qv_out = get_embedder().encode([q], convert_to_numpy=True)  # full question for out-of-scope
+
+    in_scope_sims = cosine_similarity(qv_in, get_scope_embeddings())[0]
     best_in = float(np.max(in_scope_sims))
 
-    out_scope_sims = cosine_similarity(qv, get_out_of_scope_embeddings())[0]
+    out_scope_sims = cosine_similarity(qv_out, get_out_of_scope_embeddings())[0]
     best_out = float(np.max(out_scope_sims))
 
-    if best_in < threshold:                      # gate 1: not close to any professional topic
+    if best_in < threshold:
         return False
-    if best_out > best_in:                       # gate 2: more off-topic than on-topic
+    if best_out > best_in:
         return False
     return True
-
 
 # ----------- LOAD FAISS INDEX & TEXTS -----------
 _index = None
@@ -311,16 +324,15 @@ def preprocess_question(question):
 
 # ----------- ANSWER FUNCTION (WITH STRICT SECTION ISOLATION) -----------
 def answer_question(question):
+    # Block obvious off-topic BEFORE FAQ check
     if not is_in_scope(question):
         return "I'm here to answer questions about Manasvi's professional profile. That question is outside my scope!"
 
-    faq_answer = (
-        search_priority_faq_semantic(question)
-        if detect_intent(question) not in ["project", "experience", "synthesis"]  # ADDED synthesis
-        else None
-    )
-    if faq_answer:
-        return faq_answer
+    # Priority FAQ checked before RAG pipeline
+    if detect_intent(question) not in ["project", "experience", "synthesis"]:
+        faq_answer = search_priority_faq_semantic(question)
+        if faq_answer:
+            return faq_answer
 
     question = preprocess_question(question)
     intent = detect_intent(question)
@@ -331,22 +343,17 @@ def answer_question(question):
             retrieve_chunks("taxi project", top_k=top_k, section="taxi_project")
             + retrieve_chunks("airbnb project", top_k=top_k, section="airbnb_project")
         )
-
     elif intent == "experience":
         chunks = (
             retrieve_chunks(question, top_k=top_k, section="aiesec")
             + retrieve_chunks(question, top_k=top_k, section="coindcx")
             + retrieve_chunks(question, top_k=top_k, section="experience")
         )
-
-    # ── ADDED: synthesis branch ──
     elif intent == "synthesis":
         chunks = retrieve_chunks(question, top_k=top_k * 2)
-
     else:
         chunks = retrieve_chunks(question, top_k=top_k)
 
-    # Deduplicate
     chunks = list(dict.fromkeys(chunks))
 
     score = context_relevance_score(question, chunks)
@@ -356,11 +363,4 @@ def answer_question(question):
     if not chunks:
         return "I don't have enough information to answer that."
 
-    return groq_answer_cached(question, chunks, intent=intent)  # ADDED intent
-
-
-# ----------- WARM UP ON STARTUP -----------
-get_embedder()
-get_scope_embeddings()
-get_out_of_scope_embeddings()
-get_faq_embeddings()
+    return groq_answer_cached(question, chunks, intent=intent)
