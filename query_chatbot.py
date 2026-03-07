@@ -294,14 +294,15 @@ def preprocess_question(question):
 # ----------- ANSWER FUNCTION (WITH STRICT SECTION ISOLATION) -----------
 def answer_question(question):
     # Block obvious off-topic BEFORE FAQ check
-    if not is_in_scope(question):
-        return "I'm here to answer questions about Manasvi's professional profile. That question is outside my scope!"
-
     # Priority FAQ checked before RAG pipeline
     if detect_intent(question) not in ["project", "experience", "synthesis"]:
         faq_answer = search_priority_faq_semantic(question)
         if faq_answer:
             return faq_answer
+        
+    if not is_in_scope(question):
+        return "I'm here to answer questions about Manasvi's professional profile. That question is outside my scope!"
+
 
     question = preprocess_question(question)
     intent = detect_intent(question)
