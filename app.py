@@ -1,5 +1,3 @@
-print("FLASK APP STARTED")
-
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -10,7 +8,7 @@ from query_chatbot import answer_question
 
 app = Flask(__name__)
 
-# ✅ Allow your frontend domains
+# Allow your frontend domains
 CORS(app, resources={
     r"/chat": {
         "origins": [
@@ -23,7 +21,7 @@ CORS(app, resources={
 
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
-    # ✅ Preflight request
+    # Preflight request
     if request.method == "OPTIONS":
         return ("", 204)
 
@@ -35,6 +33,10 @@ def chat():
 
     response = answer_question(user_input)
     return jsonify({"answer": response})
+
+@app.route("/health", methods=["GET"])
+def health():
+    return jsonify({"status": "ok"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
