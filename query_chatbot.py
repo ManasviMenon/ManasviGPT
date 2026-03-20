@@ -23,7 +23,7 @@ load_dotenv()
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 if not GROQ_API_KEY:
-    raise ValueError("❌ GROQ_API_KEY not found in .env")
+    raise ValueError(" GROQ_API_KEY not found in .env")
 
 import faiss  # type: ignore
 import pickle
@@ -34,7 +34,8 @@ def normalize_text(text: str) -> str:
     text = text.replace("'", "'").replace("\u201c", '"').replace("\u201d", '"')
     return text.lower().strip()
 
-
+# Semantic FAQ override for high-priority recruiter questions
+# because for certain questions precision mattered more than retrieval recall
 PRIORITY_FAQ = {
     "what role does she wish to work in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder's Office roles. This reflects her career aspirations and interests, not her past work experience.",
     "What roles is she interested in?": "Manasvi wishes to work in data-driven and analytics-focused industries. She is interested in roles in data, analytics, business operations, strategy, and growth. This includes Data Analyst, Business Analyst, Product Analytics, Analytics Specialist, Business Development, GTM Strategy, Growth and Revenue Strategy, Strategy & Operations, Sales Operations, Commercial Analytics, Project/Program Management, and Founder's Office roles. This reflects her career aspirations and interests, not her past work experience.",

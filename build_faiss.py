@@ -7,12 +7,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter # type: igno
 from langchain_core.documents import Document # type: ignore
 from sentence_transformers import SentenceTransformer # type: ignore
 
-
-
-from sentence_transformers import SentenceTransformer # type: ignore
-
 # ---------- CONFIG ----------
-DATA_FOLDER = "D:/Chatbotfolder"
+DATA_FOLDER = "data"
 FAISS_FOLDER = "faiss_index"
 
 FILENAME_TO_SECTION = {
@@ -84,4 +80,4 @@ faiss.write_index(index, os.path.join(FAISS_FOLDER, "faiss_index.bin"))
 with open(os.path.join(FAISS_FOLDER, "texts.pkl"), "wb") as f:
     pickle.dump(texts, f)
 
-print("✅ FAISS index created successfully using local embeddings (NO Ollama, NO OpenAI)")
+print("FAISS index created successfully using local embeddings (NO Ollama, NO OpenAI)")
