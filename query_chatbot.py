@@ -260,7 +260,7 @@ SYNTHESIS MODE — the recruiter is asking you to make a case for Manasvi as a c
     }
 
     data = {
-        "model": "llama-3.1-8b-instant",
+        "model": "openai/gpt-oss-20b",
         "temperature": 0.4 if intent == "synthesis" else 0.2,  # ADDED: slightly more creative for synthesis
         "messages": [
             {"role": "system", "content": system_prompt},
